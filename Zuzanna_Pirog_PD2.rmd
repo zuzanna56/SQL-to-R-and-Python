@@ -1,0 +1,202 @@
+---
+title: "Praca domowa nr 2 - Raport"
+author: "Zuzanna_Pirog"
+date: '2022-05-07'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Wstep
+Ponizszy dokumnet stanowi rozwiazanie pracy domowej nr 2 z Przetwarzania Danych Ustrukturyzowanych. Bedziemy pracować na nastepujacych ramkach danych:
+
+* Badges.csv.gz
+* Comments.csv.gz
+* PostLinks.csv.gz
+* Posts.csv.gz
+* Tags.csv.gz
+* Users.csv.gz
+* Votes.csv.gz
+
+Bedziemy korzystac z nastepujacych pakietow: **sqldf**, **data.table**, **dplyr** i **stringi**. Załączymy je przed wczytaniem danych.
+ 
+```{r packages, message=FALSE, warning=FALSE}
+library("sqldf")
+library("data.table")
+library("dplyr")
+library("stringi")
+```
+
+Musimy sie upewnic ze kolumny napisow nie zostana zmienione na typ factor. Dopiero potem je wczytamy.
+
+```{r input, message=FALSE}
+
+options(stringsAsFactors=FALSE)
+
+# Wczytanie ramek danych
+Badges <- read.csv("Badges.csv.gz")
+Comments <- read.csv("Comments.csv.gz")
+PostLinks <- read.csv("PostLinks.csv.gz")
+Posts <- read.csv("Posts.csv.gz")
+Tags <- read.csv("Tags.csv.gz")
+Users <- read.csv("Users.csv.gz")
+Votes <- read.csv("Votes.csv.gz")
+```
+
+Zimportujmy rowniez potrzebne funkcje stanowiace rozwiazanie
+```{r function_import, message=FALSE}
+source("Zuzanna_Pirog_PD2.R")
+```
+
+# Zbior danych
+Będziemy pracować na uproszczonym zrzucie zanonimizowanych danych z serwisu https://travel.stackexchange.com. W rozwiazaniach bedziemy korzystac z ramek danych takich jak **Tags**, **Posts**, **Users**, **Badges** i **Votes**.
+
+
+# Rozwiazania
+Do kazdego zadania dodamy interpetacje komendy, sprawdzimy poprawnosc funkcji i zanalizujemy jej wydajnosc.
+
+##Zadanie 1
+*Wykorzystywane ramki: **Tags***
+
+Z ramki danych Tags wybieramy dwie kolumny - _Counts_ i _Tags_. Następnie wybieramy tylko te wiersze, w ktorych parametr _wartosc_ w kolumnie _Counts_ jest wiekszy niz 1000, nastepnie porzadkujemy wiersze w kolejnosci malejacej po kolumnie _Count_.
+
+Sprawdzamy poprawnosc funkcji.
+```{r all.equal_1}
+all.equal(df_sql_1(Tags), df_base_1(Tags))
+all.equal(df_sql_1(Tags), df_dplyr_1(Tags))
+all.equal(df_sql_1(Tags), df_table_1(Tags))
+```
+
+Sprawdzamy wydajnosc poszczegolnych sposobow zrealizowania funckji.
+```{r benchmark_1, cache=TRUE}
+microbenchmark::microbenchmark(
+  sqldf = df_sql_1(Tags),
+  base = df_base_1(Tags),
+  dplyr = df_dplyr_1(Tags),
+  data.table = df_table_1(Tags),
+  times = 10L
+)
+```
+
+Jak mozemy zauwazyc, wywołanie za pomocą funkcji bazowych działa najszybciej. Zarówno czas minimalny, maksymalny, średni jaki i mediana były najmniejsze przy ich użyciu. Trochę wolniejsze jest rozwiązanie przy pomocy pakietu **data.table**, kolejne jest rozwiązanie wykorzystujące pakiet **dplyr**. Najwolniejsza zas okazala się funkcja wykorzystująca pakiet **sqldf**.
+
+## Zadanie 2
+*Wykorzystywane ramki: **Posts**, **Users***
+
+Najpierw z ramki danych _Users_ i _Posts_ wybieramy interesujace nas kolumny _OwnerUserId_, _Id_, _Location_ i laczymy je poprzez porownanie kolumn _OwnerUserId_ i _Id_. W kolejnym kroku odrzucamy puste wiersze z kolumny _Location_ . Nastepnie grupujemy ramke poprzez kolumne _Location_ i liczymy pozostale wierszy zapisujac wynik w kolumnie _Count_. Zmieniamy kolejnosc wierszy na malejaca po _Count_ i zwracamy 10 rekordow.
+
+Sprawdzamy poprawnosc funkcji.
+```{r all.equal_2}
+all.equal(df_sql_2(Users, Posts), df_base_2(Users, Posts))
+all.equal(df_sql_2(Users, Posts), df_dplyr_2(Users, Posts))
+all.equal(df_sql_2(Users, Posts), df_table_2(Users, Posts))
+```
+
+Sprawdzamy wydajnosc poszczegolnych sposobow zrealizowania funckji.
+
+```{r benchmark_2, cache=TRUE}
+microbenchmark::microbenchmark(
+  sqldf = df_sql_2(Users, Posts),
+  base = df_base_2(Users, Posts),
+  dplyr = df_dplyr_2(Users, Posts),
+  data.table = df_table_2(Users, Posts),
+  times = 10L
+)
+```
+
+Wyniki roznia sie od tych w zadaniu 1. Funkcja wykorzystujące pakiet **data.table** okazala sie najszybsza. Tuz po niej jest funkcja z poleceniami z **dplyr**. Funkcje bazowe potrzebowaly najmniej czasu poprzednio a teraz zajmuja przedostatnia pozycje. Polecenia z **sqldf** okazaly sie najwolniejsze.
+
+## Zadanie 3
+*Wykorzystywane ramki: **Badges***
+
+Z ramki _Badges_ wybieramy wiersze w ktorych w kolumnie _Class_ wartosc wynosi 1, a nastepnie kolumny _Name_ oraz _Date_, gdzie tej drugiej zmieniamy nazwe na _Year_ i formatujemy by pokazywala wylacznie rok grupujemy po kolumnach _Name_ i _Year_ i liczymy liczbe wierszy zapisujac je w kolumnie _Number._ Nastepnie sumujemy po kolumnie _Number_ grupujac po kolumnie _Year_. Zapisujemy wyniki w nowej kolumnie _TotalNumber_ i ustalamy kolejnosc na rosnaca po _TotalNumber_.
+
+Sprawdzamy poprawnosc funkcji.
+
+```{r all.equal_3}
+all.equal(df_sql_3(Badges), df_base_3(Badges))
+all.equal(df_sql_3(Badges), df_dplyr_3(Badges))
+all.equal(df_sql_3(Badges), df_table_3(Badges))
+```
+
+Sprawdzamy wydajnosc poszczegolnych sposobow zrealizowania funckji.
+
+```{r benchmark_3, cache=TRUE}
+microbenchmark::microbenchmark(
+  sqldf = df_sql_3(Badges),
+  base = df_base_3(Badges),
+  dplyr = df_dplyr_3(Badges),
+  data.table = df_table_3(Badges),
+  times = 10L
+)
+```
+
+Otrzymalismy podobne wyniki do poprzedniego drugiego zadania. Ponownie pakiet **data.table** okazal sie najszybszy, zaraz po nim pakiet **dplyr**. Tym razem najwolniejsze wywolanie bylo przy uzyciu funkcji bazowych, a **sqldf** uplasowal sie na trzeciej pozycji.
+
+## Zadanie 4
+*Wykorzystywane ramki: **Posts**, **Users***
+
+Najpierw stworzymy ramke pomocnicza _AnsCount._ W tym celu z ramki Posts wybieramy kolumne Id i wiersze ktore _PostTypeId_ maja rowne 2. Grupujemy ramke po _ParentId_ i zliczamy wiersze zapisujac wynik w nowej kolumnie _AnswersCount._ Ponownie stworzymy ramke pomocnicza tym razem o nazwie _PostAuth._ Bedzie ona zawierac kolumny _AnswersCount_, _Id_ oraz _OwnerUserId._ Powstaje ona poprzez zlaczenie ramek _Posts_ i _AnsCount_ poprzez porownanie kolumn, kolejno _Id_ z ramki _Posts_ i _ParentId_ z ramki _AnsCount._ Ostatecznie bedziemy zwracac ramke powstajaca poprzez zlaczenie ramki _Users_ i _PostAuth_ poprzez porownanie kolumn kolejno _AccountId_ z ramki _Users_ i _OwnerUserId_ z ramki _PostAuth._ Grupujemy po kolumnie _OwnerUserId_ i liczymy sredni wynik na podstawie kolumny _AnswersCount_, zapisujemy go w nowej kolumnie _AverageAnswersCount._ Ustalamy kolejnosc odpowiednio maleca po _AverageAnswersCount_ i rosnaca po _AccountId._ Ostatecznie zwracamy kolumny _Id_, _DisplayName_, _Location_ i _AverageAnswersCount_ i zwracamy 10 rekordow.
+
+Sprawdzamy poprawnosc funkcji.
+
+```{r all.equal_4}
+all.equal(df_sql_4(Users, Posts), df_base_4(Users, Posts))
+all.equal(df_sql_4(Users, Posts), df_dplyr_4(Users, Posts))
+all.equal(df_sql_4(Users, Posts), df_table_4(Users, Posts))
+```
+
+Sprawdzamy wydajnosc poszczegolnych sposobow zrealizowania funckji.
+
+```{r benchmark_4, cache=TRUE}
+microbenchmark::microbenchmark(
+  sqldf = df_sql_4(Users, Posts),
+  base = df_base_4(Users, Posts),
+  dplyr = df_dplyr_4(Users, Posts),
+  data.table = df_table_4(Users, Posts),
+  times = 10L
+)
+```
+
+Ponownie rozwiazanie z wykorzystaniem pakietu **data.table** okazalo się najszybsze. Tuz po nim znalazlo sie rozwiazanie wykorzystujace pakiet **dplyr**, nastepne miejsce zajmuja funckje bazowe, a zdecydowanie najwolniejszy okazal sie byc pakiet **sqldf**.
+
+## Zadanie 5
+*Wykorzystywane ramki: **Posts**, **Votes***
+
+Ponownie bedziemy tworzyc ramki pomocnicze. Najpierw z ramki _Votes_ przefiltrujemy wiersze spelniajace warunek dla kolumny _VoteTypeId_. Nastepnie wybierzemy dwie kolumny, mowa tu o _PostId_ oraz _CreationDate._ Ta druga przeformatujemy tak aby pokazywala sam rok. Nastepnie odpowiednio zmienimy jej nazwe na _VoteDate_ a poszczegolne rekordy tej kolumny beda zawierac "new" dla roku 2021 i 2020 oraz "old" dla pozostalych lat. Grupujemy po kolumnach _PostId_ i _VoteDate._ Liczymy liczbe rekorodw do nowo stworzonej kolumny _Total._ Zapisujemy ramke jako _VotesDates._ Kolejnym krokiem jest stworzenie ramki _VotesByAge_, ktora zaweiera kolumne _PostId_ oraz nowe kolumny: _NewVotes_, _OldVotes_, oraz _Votes._ Pierwsze dwie powstaja kolejno na podstawie sprawdzenia czy w kolumnie znajduje sie napis 'new' badz 'old'. Wtedy w przypadku kolumny _NewVotes_ gdy znajduje sie 'new' to przypisujemy do kolumny wynik z kolumny _Total_ z ramki _VotesDates_, w przeciwnym wypadku przypisujemy _0._ Analogiczna sytuacja zachodzi dla kolumny _OldVotes_ i slowa 'old'. Nastepnie dla tych kolumn sumujemy wyniki owczesnie grupujac cala ramke wzgledem PostId z ramki _VotesDates._ Kolumna Votes powstaje po zsumowaniu na podstawie kolumny _Total_ po uwczesniejszym grupowaniu wzgledem _PostId_ z ramki _VotesDates._ Ostatecznie filtrujemy wiersze tak aby spelnialy warunek mowiacy by wyniki w kolumnie NewVotes byly wieksze od tych w _OldVotes._ Ostatnim etapem jest zlaczenie ramek _Posts_ i _VotesByAge_ wzgledem kolumn odpowiednio _Id_ i _PostId._ Nastepnie zostawiamy wiersze ktore nie sa puste w kolumnie _Title._ Wybieramy kolumny _Title_, _Id_, _Votes_ oraz nowo stworzona kolumne _Date_, ktora zawiera sformatowane dane z kolumny _CreationData_ w formie rok - miesiac - dzien. Na koniec sortujemy malejaco po kolumnie _Votes_ i zwracamy pierwsze 10 rekordow
+
+Sprawdzamy poprawnosc funkcji.
+
+```{r all.equal_5}
+all.equal(df_sql_5(Posts, Votes), df_base_5(Posts, Votes))
+all.equal(df_sql_5(Posts, Votes), df_dplyr_5(Posts, Votes))
+all.equal(df_sql_5(Posts, Votes), df_table_5(Posts, Votes))
+```
+
+Sprawdzamy wydajnosc poszczegolnych sposobow zrealizowania funckji.
+
+```{r benchmark_5, cache=TRUE}
+microbenchmark::microbenchmark(
+  sqldf = df_sql_5(Posts, Votes),
+  base = df_base_5(Posts, Votes),
+  dplyr = df_dplyr_5(Posts, Votes),
+  data.table = df_table_5(Posts, Votes),
+  times= 10L
+)
+```
+
+Ponownie najszybszy okazal sie pakiet **data.table**, a najmniej wydajna funckja wykorzystujaca funkcje bazowe. Pakiety **dplyr** oraz **sqldf** uzyskaly porownywalne wyniki.
+
+
+# Podsumowanie
+Najwydajniejszym sposobem implementacji w R zapytan SQL wydaje sie byc pakeit **data.table.** To on radzil sobie najlepiej w 4 z 5 zadan. Tylko w pierwszym zadaniu wypadl on slabiej niz funkcja bazowe (moglo to wynikac z malo skomplikowanego polecenia, gdzie funkcja bazowa miala przewage), ale i tak lepiej niz pozostale pakiety. Mimo iz z kazdym poleceniem zadanie sie komplikowalo, to wciaz przodowal przed innymi pakietami.
+
+Kolejnym najszybszym pakietem byl **dplyr**, byl on zdecydowanie wygodny w uzyciu a jego skladnia bardzo przyjemna i czytelna dzieki zastosowaniu "chainowania" i operatora '%>%'.
+
+Pakiet **sqldf** wypadl dosyc przecietnie zajmowal glownie trzecie miejsca i dwa razy ostatnie. Tylko w niektorych funkcjach mial czas zblizony do pakietu dplyr. Jest on natomiast zdecydowanie wygodny dla osoby znajacej skladnie SQL poniewaz wymaga on jedynie wklejenia gotowego polecenia ktore zostanie odpowiednio zinterpretowane.
+
+Funkcje bazowe okazaly sie byc najwolniejsze w az 3 zadaniach i znacznie odstawaly od pozostalych pakietow dodatkowo. Dodatkowo skladnia funckji bazowych nie jest najbardziej czytelna, a wymagany kod byl dluzszy.
+
+Reasumujac, najbardziej optymalny okazal sie byc pakiet **data.table**, to z niego powinnismy korzystac by kod byl jak najbardziej optymalny. Niemniej jednak wybor sposobu zalezy od wlasnych preferencji poniewaz kazde rozwiazanie ma swoje wady i zalety.
